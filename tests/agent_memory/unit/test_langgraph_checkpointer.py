@@ -1,15 +1,27 @@
 """Unit tests for the create_checkpointer() LangGraph factory."""
 
 import builtins
+import logging
 from typing import Any, TypedDict
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
+from sap_cloud_sdk.agent_memory.config import AgentMemoryConfig
+from sap_cloud_sdk.agent_memory.exceptions import AgentMemoryConfigError
 from sap_cloud_sdk.agent_memory.factory.langgraph_checkpoint import create_checkpointer
+
+_NO_CREDENTIALS = "sap_cloud_sdk.agent_memory.config._load_config_from_env"
+_VALID_CONFIG = AgentMemoryConfig(
+    base_url="https://agent-memory.example.com",
+    token_url="https://tenant.authentication.region.hana.ondemand.com/oauth/token",
+    client_id="client-id",
+    client_secret="client-secret",
+)
+
 
 
 class TestCreateCheckpointer:
@@ -115,3 +127,110 @@ class TestCreateCheckpointer:
 
         assert app.get_state(config_a).values["name"] == "alice"
         assert app.get_state(config_b).values["name"] == "bob"
+
+
+@pytest.mark.no_autouse_credentials
+class TestCreateCheckpointerPersistentBackend:
+    """Tests for the HanaAgentMemorySaver path in create_checkpointer()."""
+
+    # ── Happy path ────────────────────────────────────────────────────────────
+
+    def test_returns_hana_saver_when_credentials_available(self):
+        """Returns HanaAgentMemorySaver when credentials are present and extra is installed."""
+        mock_saver_instance = MagicMock()
+        mock_saver_class = MagicMock(return_value=mock_saver_instance)
+
+        with patch(_NO_CREDENTIALS, return_value=_VALID_CONFIG):
+            with patch.dict(
+                "sys.modules",
+                {"langgraph.checkpoint.sap.agent_memory": MagicMock(HanaAgentMemorySaver=mock_saver_class)},
+            ):
+                result = create_checkpointer()
+
+        mock_saver_class.assert_called_once_with(
+            base_url=_VALID_CONFIG.base_url,
+            token_url=_VALID_CONFIG.token_url,
+            client_id=_VALID_CONFIG.client_id,
+            client_secret=_VALID_CONFIG.client_secret,
+            timeout=_VALID_CONFIG.timeout,
+        )
+        assert result is mock_saver_instance
+
+    def test_credentials_passed_correctly_to_hana_saver(self):
+        """Each AgentMemoryConfig field is forwarded to HanaAgentMemorySaver."""
+        config = AgentMemoryConfig(
+            base_url="https://custom.example.com",
+            token_url="https://custom.auth.example.com/oauth/token",
+            client_id="my-client",
+            client_secret="my-secret",
+            timeout=60.0,
+        )
+        mock_saver_class = MagicMock()
+
+        with patch(_NO_CREDENTIALS, return_value=config):
+            with patch.dict(
+                "sys.modules",
+                {"langgraph.checkpoint.sap.agent_memory": MagicMock(HanaAgentMemorySaver=mock_saver_class)},
+            ):
+                create_checkpointer()
+
+        mock_saver_class.assert_called_once_with(
+            base_url="https://custom.example.com",
+            token_url="https://custom.auth.example.com/oauth/token",
+            client_id="my-client",
+            client_secret="my-secret",
+            timeout=60.0,
+        )
+
+    # ── Fallback paths ────────────────────────────────────────────────────────
+
+    def test_falls_back_to_in_memory_when_no_credentials(self):
+        """Falls back to InMemorySaver when no credentials are found."""
+        with patch(_NO_CREDENTIALS, side_effect=AgentMemoryConfigError("no credentials")):
+            result = create_checkpointer()
+        assert isinstance(result, InMemorySaver)
+
+    def test_falls_back_to_timed_saver_when_no_credentials_and_ttl_set(self):
+        """Falls back to TimedInMemorySaver when no credentials but ttl_seconds is given."""
+        from sap_cloud_sdk.agent_memory.factory._timed_memory import TimedInMemorySaver
+
+        with patch(_NO_CREDENTIALS, side_effect=AgentMemoryConfigError("no credentials")):
+            result = create_checkpointer(ttl_seconds=3600)
+        assert isinstance(result, TimedInMemorySaver)
+
+    # ── Error handling ────────────────────────────────────────────────────────
+
+    def test_raises_import_error_when_extra_not_installed(self):
+        """Raises ImportError with install hint when extra is missing despite credentials."""
+        original_import = builtins.__import__
+
+        def mock_import(name, *args, **kwargs):
+            if name == "langgraph.checkpoint.sap.agent_memory":
+                raise ImportError("No module named 'langgraph.checkpoint.sap'")
+            return original_import(name, *args, **kwargs)
+
+        with patch(_NO_CREDENTIALS, return_value=_VALID_CONFIG):
+            with patch("builtins.__import__", side_effect=mock_import):
+                with pytest.raises(ImportError, match="langgraph-checkpoint-sap-agent-memory"):
+                    create_checkpointer()
+
+    # ── TTL warning ───────────────────────────────────────────────────────────
+
+    def test_ttl_seconds_ignored_with_hana_saver_logs_warning(self, caplog):
+        """ttl_seconds is ignored and a warning is logged when using HanaAgentMemorySaver."""
+        mock_saver_class = MagicMock()
+
+        with patch(_NO_CREDENTIALS, return_value=_VALID_CONFIG):
+            with patch.dict(
+                "sys.modules",
+                {"langgraph.checkpoint.sap.agent_memory": MagicMock(HanaAgentMemorySaver=mock_saver_class)},
+            ):
+                with caplog.at_level(
+                    logging.WARNING,
+                    logger="sap_cloud_sdk.agent_memory.factory.langgraph_checkpoint",
+                ):
+                    result = create_checkpointer(ttl_seconds=3600)
+
+        assert mock_saver_class.called
+        assert result is mock_saver_class.return_value
+        assert "ttl_seconds=3600 is ignored" in caplog.text

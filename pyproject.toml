@@ -49,10 +49,16 @@ sqlalchemy = ["sqlalchemy>=2.0.0"]
 django = ["django>=4.0"]
 flask = ["flask>=3.0"]
 langgraph = ["langgraph>=1.0.0"]
+langgraph-checkpoint-sap-agent-memory = [
+    "langgraph-checkpoint-sap-agent-memory @ git+https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git",
+]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sap_cloud_sdk", "src/buf"]
@@ -81,12 +87,14 @@ dev = [
     "langchain-community>=0.3.0",
     "litellm>=1.40.0",
     "langchain-litellm>=0.6.6",
+    "langgraph-checkpoint-sap-agent-memory @ git+https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git",
 ]
 
 [tool.pytest.ini_options]
 markers = [
     "integration: marks tests as integration tests (requires Docker)",
     "aicore: marks tests that require AI Core credentials (AICORE_* env vars)",
+    "no_autouse_credentials: opts out of the default no-credentials fixture in checkpointer tests",
 ]
 
 [tool.coverage.run]

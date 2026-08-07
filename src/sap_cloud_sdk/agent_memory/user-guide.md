@@ -852,11 +852,14 @@ factory in the `factory` subpackage. It returns a `BaseCheckpointSaver` that
 manages short-term session memory — conversation state, thread continuity, and
 HITL support — natively within LangGraph.
 
-> [!NOTE]
-> The current implementation uses LangGraph's `InMemorySaver` or
-> `TimedInMemorySaver` (when `ttl_seconds` is set). State is held in-process
-> and does not survive restarts. Persistent checkpointing backed by the
-> Agent Memory Service is not yet supported.
+`create_checkpointer()` automatically detects whether Agent Memory Service credentials
+are available in the environment:
+
+- **Credentials present** — returns `HanaAgentMemorySaver`, backed by the Agent Memory
+  Service. State survives process restarts, supports crash recovery and HITL pause/resume.
+  Requires the `langgraph-checkpoint-sap-agent-memory` optional extra.
+- **No credentials** — falls back to `InMemorySaver` (or `TimedInMemorySaver` when
+  `ttl_seconds` is set). State is in-process only and will not survive restarts.
 
 ### Prerequisites
 
@@ -869,6 +872,17 @@ pip install "sap-cloud-sdk[langgraph]"
 # Or install langgraph directly
 pip install langgraph
 ```
+
+For persistent checkpointing backed by the Agent Memory Service, also install the checkpoint extra:
+
+```bash
+pip install "sap-cloud-sdk[langgraph-checkpoint-sap-agent-memory]"
+```
+
+> [!NOTE]
+> The `langgraph-checkpoint-sap-agent-memory` extra is only required when Agent Memory Service
+> credentials are present in the environment. Without credentials, `create_checkpointer()`
+> automatically falls back to the in-memory implementation and this extra is not needed.
 
 ### Import
 
@@ -906,17 +920,22 @@ agent = create_agent(
 ### Thread TTL
 
 Pass `ttl_seconds` to evict threads that have been inactive for the given
-period. This prevents unbounded memory growth in long-running processes.
+period. This applies to the **in-memory fallback only** (when no Agent Memory
+Service credentials are present).
 
 ```python
-# Evict threads inactive for more than 1 hour
+# Evict threads inactive for more than 1 hour (in-memory fallback only)
 checkpointer = create_checkpointer(ttl_seconds=3600)
 ```
 
-When `ttl_seconds` is set, the factory returns a `TimedInMemorySaver` that
-tracks last-active time per thread and evicts inactive threads via a
-background daemon sweep. Eviction is best-effort — a thread may live up to
-`ttl_seconds + 60` seconds before deletion.
+When `ttl_seconds` is set and no credentials are found, the factory returns a
+`TimedInMemorySaver` that tracks last-active time per thread and evicts inactive
+threads via a background daemon sweep. Eviction is best-effort — a thread may
+live up to `ttl_seconds + 60` seconds before deletion.
+
+When Agent Memory Service credentials are present, `ttl_seconds` is ignored (a
+warning is logged). Thread retention for the persistent backend is managed
+server-side via the Agent Memory Service retention configuration.
 
 #### Exposing TTL as a configurable parameter with `@agent_config`
 
@@ -949,5 +968,6 @@ class MyAgent:
 
 > [!NOTE]
 > `TimedInMemorySaver` state does not survive process restarts — the TTL
-> applies to in-process memory only. Persistent TTL enforcement will be
-> available when the Agent Memory Service checkpointer ships.
+> applies to in-process memory only. When Agent Memory Service credentials
+> are available, `create_checkpointer()` returns `HanaAgentMemorySaver`
+> instead, and `ttl_seconds` is ignored.
