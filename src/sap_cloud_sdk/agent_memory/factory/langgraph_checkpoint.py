@@ -67,7 +67,11 @@ def create_checkpointer(*, ttl_seconds: Optional[int] = None):
 
     try:
         config = _load_config_from_env()
-    except AgentMemoryConfigError:
+    except AgentMemoryConfigError as exc:
+        logger.warning(
+            "AgentMemory Service credentials not found - evaluating fallback to in-memory checkpointer.",
+            exc_info=exc,
+        )
         config = None
 
     if config is not None:
