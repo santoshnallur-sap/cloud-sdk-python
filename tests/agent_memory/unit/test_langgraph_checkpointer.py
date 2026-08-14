@@ -153,6 +153,7 @@ class TestCreateCheckpointerPersistentBackend:
             client_id=_VALID_CONFIG.client_id,
             client_secret=_VALID_CONFIG.client_secret,
             timeout=_VALID_CONFIG.timeout,
+            ttl_seconds=None,
         )
         assert result is mock_saver_instance
 
@@ -180,6 +181,7 @@ class TestCreateCheckpointerPersistentBackend:
             client_id="my-client",
             client_secret="my-secret",
             timeout=60.0,
+            ttl_seconds=None,
         )
 
     # ── Fallback paths ────────────────────────────────────────────────────────
@@ -214,10 +216,10 @@ class TestCreateCheckpointerPersistentBackend:
                 with pytest.raises(ImportError, match="langgraph-checkpoint-sap-agent-memory"):
                     create_checkpointer()
 
-    # ── TTL warning ───────────────────────────────────────────────────────────
+    # ── TTL forwarding ────────────────────────────────────────────────────────
 
-    def test_ttl_seconds_ignored_with_hana_saver_logs_warning(self, caplog):
-        """ttl_seconds is ignored and a warning is logged when using HanaAgentMemorySaver."""
+    def test_ttl_seconds_forwarded_to_hana_saver(self):
+        """ttl_seconds is passed through to HanaAgentMemorySaver constructor."""
         mock_saver_class = MagicMock()
 
         with patch(_NO_CREDENTIALS, return_value=_VALID_CONFIG):
@@ -225,12 +227,21 @@ class TestCreateCheckpointerPersistentBackend:
                 "sys.modules",
                 {"langgraph.checkpoint.sap.agent_memory": MagicMock(HanaAgentMemorySaver=mock_saver_class)},
             ):
-                with caplog.at_level(
-                    logging.WARNING,
-                    logger="sap_cloud_sdk.agent_memory.factory.langgraph_checkpoint",
-                ):
-                    result = create_checkpointer(ttl_seconds=3600)
+                create_checkpointer(ttl_seconds=3600)
 
-        assert mock_saver_class.called
-        assert result is mock_saver_class.return_value
-        assert "ttl_seconds=3600 is ignored" in caplog.text
+        _, kwargs = mock_saver_class.call_args
+        assert kwargs["ttl_seconds"] == 3600
+
+    def test_ttl_seconds_none_forwarded_to_hana_saver(self):
+        """ttl_seconds=None is forwarded when no TTL is requested."""
+        mock_saver_class = MagicMock()
+
+        with patch(_NO_CREDENTIALS, return_value=_VALID_CONFIG):
+            with patch.dict(
+                "sys.modules",
+                {"langgraph.checkpoint.sap.agent_memory": MagicMock(HanaAgentMemorySaver=mock_saver_class)},
+            ):
+                create_checkpointer()
+
+        _, kwargs = mock_saver_class.call_args
+        assert kwargs["ttl_seconds"] is None

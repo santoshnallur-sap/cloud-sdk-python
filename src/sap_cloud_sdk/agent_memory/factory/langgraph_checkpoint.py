@@ -40,10 +40,8 @@ def create_checkpointer(*, ttl_seconds: Optional[int] = None):
 
     Args:
         ttl_seconds: Evict threads inactive for this many seconds.
-                     Only applies to the in-memory fallback path.
-                     Ignored (with a warning) when ``HanaAgentMemorySaver``
-                     is returned — use the Agent Memory Service retention
-                     config to control thread lifetime there.
+                     Forwarded to ``HanaAgentMemorySaver`` when credentials
+                     are present.  Also applies to the in-memory fallback path.
 
     Returns:
         BaseCheckpointSaver instance.
@@ -83,13 +81,6 @@ def create_checkpointer(*, ttl_seconds: Optional[int] = None):
                 "Install it with: "
                 "pip install 'sap-cloud-sdk[langgraph-checkpoint-sap-agent-memory]'"
             ) from exc
-        if ttl_seconds is not None:
-            logger.warning(
-                "create_checkpointer(): ttl_seconds=%d is ignored when using "
-                "HanaAgentMemorySaver — thread retention is managed server-side "
-                "via the Agent Memory Service retention config.",
-                ttl_seconds,
-            )
         logger.info("create_checkpointer(): using HanaAgentMemorySaver (persistent).")
         return HanaAgentMemorySaver(
             base_url=config.base_url,
@@ -97,6 +88,7 @@ def create_checkpointer(*, ttl_seconds: Optional[int] = None):
             client_id=config.client_id,
             client_secret=config.client_secret,
             timeout=config.timeout,
+            ttl_seconds=ttl_seconds,  # ty: ignore[unknown-argument]
         )
 
     try:
