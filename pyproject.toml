@@ -4,9 +4,7 @@ version = "0.40.0"
 description = "SAP Cloud SDK for Python"
 readme = "README.md"
 license = "Apache-2.0"
-authors = [
-    { name = "SAP SE", email = "ospo@sap.com" }
-]
+authors = [{ name = "SAP SE", email = "ospo@sap.com" }]
 requires-python = ">=3.11"
 dependencies = [
     "minio~=7.2.16",
@@ -50,7 +48,7 @@ django = ["django>=4.0"]
 flask = ["flask>=3.0"]
 langgraph = ["langgraph>=1.0.0"]
 langgraph-checkpoint-sap-agent-memory = [
-    "langgraph-checkpoint-sap-agent-memory @ git+https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git",
+    "langgraph-checkpoint-sap-agent-memory @ git+https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git@ttl-checkpoint",
 ]
 
 [build-system]
@@ -87,7 +85,7 @@ dev = [
     "langchain-community>=0.3.0",
     "litellm>=1.40.0",
     "langchain-litellm>=0.6.6",
-    "langgraph-checkpoint-sap-agent-memory @ git+https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git",
+    "langgraph-checkpoint-sap-agent-memory @ git+https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git@ttl-checkpoint",
 ]
 
 [tool.pytest.ini_options]
@@ -103,7 +101,7 @@ omit = [
     "*/tests/*",
     "*/test_*",
     "*/sap_cloud_sdk/core/auditlog_ng/gen/*",
-    "*/buf/*"
+    "*/buf/*",
 ]
 skip_empty = true
 
@@ -120,7 +118,7 @@ exclude = [
     "venv",
     "tests/",
     "src/sap_cloud_sdk/core/auditlog_ng/gen",
-    "src/buf"
+    "src/buf",
 ]
 
 # Same as Black.
@@ -149,7 +147,4 @@ python-version = "3.11"
 
 [tool.ty.src]
 include = ["src", "tests"]
-exclude = [
-    "src/sap_cloud_sdk/core/auditlog_ng/gen",
-    "src/buf",
-]
+exclude = ["src/sap_cloud_sdk/core/auditlog_ng/gen", "src/buf"]

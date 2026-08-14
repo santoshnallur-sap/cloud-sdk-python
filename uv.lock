@@ -1594,7 +1594,7 @@ wheels = [
 [[package]]
 name = "langgraph-checkpoint-sap-agent-memory"
 version = "0.1.0"
-source = { git = "https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git#69f30e048e91ea63ce5a78189d9335cb513be253" }
+source = { git = "https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git?rev=ttl-checkpoint#4df374e54ab61081daaa2794db30d65101f43f03" }
 dependencies = [
     { name = "httpx" },
     { name = "langgraph-checkpoint" },
@@ -4053,7 +4053,7 @@ requires-dist = [
     { name = "hatchling", specifier = "~=1.27.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "langgraph", marker = "extra == 'langgraph'", specifier = ">=1.0.0" },
-    { name = "langgraph-checkpoint-sap-agent-memory", marker = "extra == 'langgraph-checkpoint-sap-agent-memory'", git = "https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git" },
+    { name = "langgraph-checkpoint-sap-agent-memory", marker = "extra == 'langgraph-checkpoint-sap-agent-memory'", git = "https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git?rev=ttl-checkpoint" },
     { name = "mcp", specifier = ">=1.1.0" },
     { name = "minio", specifier = "~=7.2.16" },
     { name = "opentelemetry-api", specifier = ">=1.42.1" },
@@ -4098,7 +4098,7 @@ dev = [
     { name = "langchain-core", specifier = ">=1.2.7" },
     { name = "langchain-litellm", specifier = ">=0.6.6" },
     { name = "langgraph", specifier = ">=0.2.0" },
-    { name = "langgraph-checkpoint-sap-agent-memory", git = "https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git" },
+    { name = "langgraph-checkpoint-sap-agent-memory", git = "https://github.tools.sap/AgentMemory/langgraph-checkpoint-sap-agent-memory.git?rev=ttl-checkpoint" },
     { name = "litellm", specifier = ">=1.40.0" },
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-asyncio", specifier = ">=1.0.0" },
