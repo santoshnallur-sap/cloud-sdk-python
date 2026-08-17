@@ -81,7 +81,7 @@ def create_checkpointer(*, ttl_seconds: Optional[int] = None):
                 "Install it with: "
                 "pip install 'sap-cloud-sdk[langgraph-checkpoint-sap-agent-memory]'"
             ) from exc
-        logger.info("create_checkpointer(): using HanaAgentMemorySaver (persistent).")
+        logger.info("create_checkpointer(): using HanaAgentMemorySaver.")
         return HanaAgentMemorySaver(
             base_url=config.base_url,
             token_url=config.token_url,
